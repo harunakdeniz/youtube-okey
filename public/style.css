@@ -1,0 +1,39 @@
+/* Genel Ayarlar ve Mobil Uyum Temeli */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    min-height: 100vh;
+    background-color: #1a4d2e; /* Klasik okey çuha yeşili tonu */
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow-x: hidden;
+}
+
+/* Oyun Alanı / Masa Konteyneri */
+#game-container, .game-board {
+    width: 100%;
+    max-width: 900px;
+    padding: 10px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Taşlar ve İstakalar için Mobil Esneklik */
+.rack, .board-area {
+    max-width: 100%;
+    overflow-x: auto; /* Telefonda taşma olursa kaydırma çubuğu çıkar */
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    padding: 5px;
+}
