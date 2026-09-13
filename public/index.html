@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube 101 Okey</title>
+    <style>
+        body {
+            background: radial-gradient(circle, #1b4d3e 0%, #0f2d23 100%);
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 100vh;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        #game-container {
+            width: 100%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .info-panel {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 10px 20px;
+            border-radius: 8px;
+            display: flex;
+            gap: 20px;
+            font-size: 16px;
+        }
+
+        /* Ahşap Görünümlü İstaka */
+        .rack {
+            background: linear-gradient(to bottom, #8B5A2B, #5C3A21);
+            border: 4px solid #3d2514;
+            border-radius: 8px;
+            padding: 10px;
+            display: flex;
+            gap: 6px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.6);
+            max-width: 100%;
+            overflow-x: auto;
+            min-height: 80px;
+            align-items: center;
+        }
+
+        /* Okey Taşları Tasarımı */
+        .tile {
+            width: 40px;
+            height: 60px;
+            background-color: #f4f1ea;
+            color: #222;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            font-weight: bold;
+            box-shadow: inset 0 2px 4px rgba(255,255,255,0.8), 0 4px 6px rgba(0,0,0,0.4);
+            cursor: pointer;
+            user-select: none;
+            flex-shrink: 0;
+            transition: transform 0.1s ease;
+        }
+
+        .tile:hover {
+            transform: translateY(-5px);
+        }
+
+        /* Taş Renkleri */
+        .tile.kirmizi { color: #d9381e; }
+        .tile.siyah { color: #111111; }
+        .tile.mavi { color: #1e6bd9; }
+        .tile.sari { color: #b8970b; }
+        .tile.ozel { color: #8e44ad; }
+
+        .join-screen {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 30px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 300px;
+        }
+
+        .join-screen input, .join-screen select, .join-screen button {
+            padding: 10px;
+            border-radius: 6px;
+            border: none;
+            font-size: 16px;
+        }
+
+        .join-screen button {
+            background-color: #27ae60;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .join-screen button:hover {
+            background-color: #219653;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="login-section" class="join-screen">
+        <h2>Masa Girişi</h2>
+        <input type="text" id="player-name" placeholder="Oyuncu Adı">
+        <select id="player-gender">
+            <option value="e">Erkek 👨</option>
+            <option value="k">Kadın 👩</option>
+        </select>
+        <input type="text" id="table-name" value="Genel" placeholder="Masa Adı">
+        <button onclick="joinTable()">Masaya Katıl</button>
+    </div>
+
+    <div id="game-container" style="display: none;">
+        <div class="info-panel">
+            <span id="info-turn">Sıra: Bekleniyor...</span>
+            <span id="info-table">Masa: -</span>
+        </div>
+
+        <div id="table-status">Oyuncular bekleniyor (0/4)...</div>
+
+        <!-- Oyuncunun İstakası -->
+        <div class="rack" id="player-rack">
+            <!-- Taşlar buraya dinamik eklenecek -->
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let myName = "";
+        let currentTable = "Genel";
+
+        function joinTable() {
+            myName = document.getElementById('player-name').value.trim();
+            const gender = document.getElementById('player-gender').value;
+            currentTable = document.getElementById('table-name').value.trim() || "Genel";
+
+            if (!myName) {
+                alert("Lütfen bir oyuncu adı girin!");
+                return;
+            }
+
+            socket.emit('koltugaKatil', {
+                isim: myName,
+                cinsiyet: gender,
+                masaAdi: currentTable
+            });
+
+            document.getElementById('login-section').style.display = 'none';
+            document.getElementById('game-container').style.display = 'flex';
+        }
+
+        socket.on('masaDurumuGuncelle', (data) => {
+            if (data.masaAdi !== currentTable) return;
+
+            document.getElementById('info-table').innerText = `Masa: ${data.masaAdi}`;
+            document.getElementById('info-turn').innerText = `Sıra: ${data.sira || 'Yok'}`;
+            
+            const playerList = data.oyuncular.map(o => `${o.avatar} ${o.isim}`).join(', ');
+            document.getElementById('table-status').innerText = `Oyuncular (${data.oyuncular.length}/4): ${playerList}`;
+
+            // Oyuncunun kendi elini çiz
+            const rackEl = document.getElementById('player-rack');
+            rackEl.innerHTML = '';
+
+            if (data.oyuncuElleri && data.oyuncuElleri[myName]) {
+                data.oyuncuElleri[myName].forEach(tile => {
+                    const tileDiv = document.createElement('div');
+                    tileDiv.className = `tile ${tile.renk}`;
+                    tileDiv.innerText = tile.sahteOkey ? 'J' : tile.sayi;
+                    
+                    // Taşa tıklayınca yere atma fonksiyonu
+                    tileDiv.onclick = () => {
+                        if (data.sira === myName) {
+                            socket.emit('tasAt', {
+                                masaAdi: currentTable,
+                                oyuncuAdi: myName,
+                                tasId: tile.id
+                            });
+                        } else {
+                            alert("Sıra sizde değil!");
+                        }
+                    };
+
+                    rackEl.appendChild(tileDiv);
+                });
+            }
+        });
+    </script>
+</body>
+</html>
